@@ -26,20 +26,12 @@ from __future__ import annotations
 import argparse
 import sys
 import time
-import urllib.request
 from pathlib import Path
 
 import joblib
 import numpy as np
 
-
-def send_esp(ip: str, cmd: str, timeout: float = 0.5) -> None:
-    """Send a motor command to the ESP32 HTTP server (non-blocking on failure)."""
-    try:
-        url = f"http://{ip}/cmd?v={cmd}"
-        urllib.request.urlopen(url, timeout=timeout)
-    except Exception as e:
-        print(f"  [ESP] send failed ({cmd}): {e}")
+from commands_to_esp import ESPClient
 
 # joblib needs to find FBCSPExtractor — same trick live-test-svm.py uses.
 sys.path.insert(0, str(Path(__file__).parent))
@@ -107,15 +99,10 @@ def main() -> int:
     print(f'  CV accuracy  : {pkg.get("cv_accuracy", 0):.1%}')
     print(f'  mapping      : ' + '  '.join(f'{c}->{wheelchair[i]}'
                                             for i, c in enumerate(class_names)))
+    esp = None
     if args.esp_ip:
-        print(f'  ESP32        : http://{args.esp_ip}/cmd')
-        print(f'  (testing connection...)')
-        try:
-            urllib.request.urlopen(f'http://{args.esp_ip}/status', timeout=3)
-            print(f'  ESP32 reachable ✓')
-        except Exception as e:
-            print(f'  WARNING: ESP32 not reachable — {e}')
-            print(f'  Commands will be sent but may fail silently.')
+        esp = ESPClient(args.esp_ip)
+        esp.connect()
 
     from brainflow.board_shim import BoardShim, BrainFlowInputParams, BoardIds
     params = BrainFlowInputParams()
@@ -175,8 +162,8 @@ def main() -> int:
                                        for c in range(n_classes))
                   + f'   |hw|={in_energy:7.2f}')
 
-            if args.esp_ip and cmd != '(below gate)':
-                send_esp(args.esp_ip, cmd)
+            if esp and cmd != '(below gate)':
+                esp.send(cmd)
 
     except KeyboardInterrupt:
         print('\nstopped by user.')
@@ -186,6 +173,8 @@ def main() -> int:
             board.release_session()
         except Exception:
             pass
+        if esp:
+            esp.close()
     return 0
 
 
