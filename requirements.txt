@@ -1,0 +1,14 @@
+mne==1.6.1
+scikit-learn==1.4.2
+torch==2.2.2
+brainflow==5.12.1
+numpy==1.26.4
+scipy==1.13.0
+joblib==1.4.0
+pyyaml==6.0.1
+pytest==8.1.1
+ruff==0.4.1
+pyriemann>=0.6
+PyWavelets>=1.6
+# RPi.GPIO is only needed on Raspberry Pi — install manually on target hardware
+# RPi.GPIO==0.7.1
